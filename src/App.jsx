@@ -19,6 +19,7 @@ const exportPDF = (p, type = "historia", consulta = null) => {
     h3{color:#1a331a; border-bottom:2px solid #3a7a3a; padding-bottom:5px; margin-top:30px;}
     .med-box{font-size:17px; white-space: pre-wrap; padding:25px; border:2px dashed #3a7a3a; border-radius:15px; background:#fff;}
     .legal{font-size:10px; color:#666; margin-top:30px; border:1px solid #eee; padding:10px;}
+    .exam-grid{display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px;}
   </style></head><body>
     <div class="header">
       <img src="${LOGO_URL}" class="logo-img" onerror="this.style.display='none'">
@@ -36,7 +37,19 @@ const exportPDF = (p, type = "historia", consulta = null) => {
       </div>
     </div>
     ${isReceta ? `<h3>INDICACIONES:</h3><div class="med-box">${consulta.tratamiento}</div>` : 
-    `<h3>HISTORIAL</h3>${p.history.map(h => `<div style="border-bottom:1px solid #eee; padding:10px 0;"><p><strong>${h.date}</strong> | Peso: ${h.weight}kg<br><strong>Dx:</strong> ${h.diagnostico}<br><strong>Trat:</strong> ${h.tratamiento}</p></div>`).join("")}`}
+    `<h3>EXAMEN FÍSICO Y CONSTANTES</h3>
+     <div class="exam-grid">
+       <div><strong>T°:</strong> ${consulta.temp || '--'} °C</div>
+       <div><strong>FC:</strong> ${consulta.fc || '--'} lpm</div>
+       <div><strong>FR:</strong> ${consulta.fr || '--'} rpm</div>
+       <div><strong>TLLC:</strong> ${consulta.tllc || '--'} seg</div>
+       <div><strong>Mucosas:</strong> ${consulta.mucosas || '--'}</div>
+       <div><strong>Linfonodos:</strong> ${consulta.linfonodos || '--'}</div>
+       <div><strong>Hidratación:</strong> ${consulta.hidratacion || '--'}</div>
+       <div><strong>Cav. Oral:</strong> ${consulta.oral || '--'}</div>
+     </div>
+     <h3>DIAGNÓSTICO</h3><p>${consulta.diagnostico}</p>
+     <h3>PLAN TERAPÉUTICO</h3><p>${consulta.tratamiento}</p>`}
     
     ${!isReceta && consulta?.consentimiento ? `
       <div class="legal">
@@ -52,16 +65,16 @@ const exportPDF = (p, type = "historia", consulta = null) => {
 
 export default function VetApp() {
   const [tab, setTab] = useState("inicio");
-  const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem("vet_v23") || "[]"));
-  const [finances, setFinances] = useState(() => JSON.parse(localStorage.getItem("fin_v23") || "[]"));
+  const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem("vet_v24") || "[]"));
+  const [finances, setFinances] = useState(() => JSON.parse(localStorage.getItem("fin_v24") || "[]"));
   const [modal, setModal] = useState(null);
   const [activePat, setActivePat] = useState(null);
   const [activeHistId, setActiveHistId] = useState(null); 
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    localStorage.setItem("vet_v23", JSON.stringify(patients));
-    localStorage.setItem("fin_v23", JSON.stringify(finances));
+    localStorage.setItem("vet_v24", JSON.stringify(patients));
+    localStorage.setItem("fin_v24", JSON.stringify(finances));
   }, [patients, finances]);
 
   const alertas = useMemo(() => {
@@ -82,21 +95,17 @@ export default function VetApp() {
   }, [finances]);
 
   const [pForm, setPForm] = useState({ name: "", species: "Perro", breed: "", age: "", weight: "", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" });
-  const [cForm, setCForm] = useState({ id: null, date: new Date().toISOString().split('T')[0], weight: "", temp: "", fc: "", fr: "", diagnostico: "", tratamiento: "", consentimiento: false });
+  const [cForm, setCForm] = useState({ id: null, date: new Date().toISOString().split('T')[0], weight: "", temp: "", fc: "", fr: "", tllc: "", mucosas: "", linfonodos: "", hidratacion: "", oral: "", diagnostico: "", tratamiento: "", consentimiento: false });
   const [vForm, setVForm] = useState({ nombre: "", fecha: "", refuerzo: "", tipo: "vacuna" });
   const [calc, setCalc] = useState({ p: "", d: "", c: "", r: 0 });
 
   const labelS = { fontSize: "11px", fontWeight: "bold", color: "#3a7a3a", marginBottom: "3px", display: "block" };
-  const inp = { width: "100%", padding: "12px", border: "1.5px solid #d8e8d0", borderRadius: 12, marginBottom: 12, boxSizing: "border-box" };
+  const inp = { width: "100%", padding: "10px", border: "1.5px solid #d8e8d0", borderRadius: 10, marginBottom: 8, boxSizing: "border-box", fontSize: "14px" };
   const btnG = { background: "#3a7a3a", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, cursor: "pointer" };
 
-  // BUSCADOR AVANZADO: Filtra por nombre de mascota O nombre de tutor
   const filteredPatients = useMemo(() => {
     const s = search.toLowerCase();
-    return patients.filter(p => 
-      p.name.toLowerCase().includes(s) || 
-      p.ownerName.toLowerCase().includes(s)
-    );
+    return patients.filter(p => p.name.toLowerCase().includes(s) || p.ownerName.toLowerCase().includes(s));
   }, [patients, search]);
 
   return (
@@ -153,7 +162,7 @@ export default function VetApp() {
                   <p style={{ fontSize: 13, color: "#666" }}>Tutor: {p.ownerName} | {p.weight} kg</p>
                   {p.alergias && <div style={{ color: "#d32f2f", fontWeight: "bold", fontSize: 10 }}>⚠️ ALÉRGICO: {p.alergias.toUpperCase()}</div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-                    <button onClick={() => { setActivePat(p); setActiveHistId(null); setCForm({ id: Date.now(), date: new Date().toISOString().split('T')[0], weight: p.weight, temp: "", fc: "", fr: "", diagnostico: "", tratamiento: "", consentimiento: false }); setModal("consulta"); }} style={btnG}>🩺 Consulta</button>
+                    <button onClick={() => { setActivePat(p); setActiveHistId(null); setCForm({ id: Date.now(), date: new Date().toISOString().split('T')[0], weight: p.weight, temp: "", fc: "", fr: "", tllc: "", mucosas: "", linfonodos: "", hidratacion: "", oral: "", diagnostico: "", tratamiento: "", consentimiento: false }); setModal("consulta"); }} style={btnG}>🩺 Consulta</button>
                     <button onClick={() => { setActivePat(p); setModal("vacuna"); }} style={{ ...btnG, background: "#4a90e2" }}>💉 Vac/Parás</button>
                     <button onClick={() => { setActivePat(p); setModal("historial"); }} style={{ ...btnG, gridColumn: "span 2", background: "#f0f5ef", color: "#3a7a3a" }}>📜 Historial</button>
                   </div>
@@ -179,7 +188,7 @@ export default function VetApp() {
         )}
       </main>
 
-      {/* MODAL: ALTA/EDICIÓN PACIENTE + BORRADO */}
+      {/* MODAL: ALTA/EDICIÓN PACIENTE */}
       {modal === "paciente" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 30, width: "90%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
@@ -213,40 +222,56 @@ export default function VetApp() {
                 }
                 setModal(null); 
             }}>Guardar Ficha</button>
-            <button onClick={() => setModal(null)} style={{ background: "none", border: "none", width: "100%", marginTop: 10, cursor: "pointer", color: "#666" }}>Cerrar sin guardar</button>
+            <button onClick={() => setModal(null)} style={{ background: "none", border: "none", width: "100%", marginTop: 10, cursor: "pointer", color: "#666" }}>Cerrar</button>
           </div>
         </div>
       )}
 
-      {/* MODAL: CONSULTA / MODAL VACUNA / MODAL HISTORIAL (SIGUEN IGUAL) */}
+      {/* MODAL: CONSULTA + EXAMEN FÍSICO DETALLADO */}
       {modal === "consulta" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 10 }}>
-          <div style={{ background: "#fff", borderRadius: 30, width: "100%", maxWidth: 700, maxHeight: "95vh", overflowY: "auto", padding: 30 }}>
-            <h3>{activeHistId ? "Editar Atención" : "Atención"}: {activePat.name}</h3>
+          <div style={{ background: "#fff", borderRadius: 30, width: "100%", maxWidth: 750, maxHeight: "95vh", overflowY: "auto", padding: 25 }}>
+            <h3 style={{ marginBottom: 15 }}>{activeHistId ? "Editar Atención" : "Atención"}: {activePat.name}</h3>
+            
             <div style={{ background: "#f0f7f0", padding: 15, borderRadius: 15, marginBottom: 15 }}>
-              <span style={labelS}>🧮 CALCULADORA</span>
+              <span style={labelS}>🧮 CALCULADORA DE DOSIS</span>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 0.5fr", gap: 8 }}>
                 <input placeholder="kg" style={inp} onChange={e => setCalc({...calc, p: e.target.value})} />
                 <input placeholder="mg/kg" style={inp} onChange={e => setCalc({...calc, d: e.target.value})} />
                 <input placeholder="mg/ml" style={inp} onChange={e => setCalc({...calc, c: e.target.value})} />
-                <button style={btnG} onClick={() => setCalc({...calc, r: (calc.p * calc.d / calc.c).toFixed(2)})}>ok</button>
+                <button style={{...btnG, padding: "10px"}} onClick={() => setCalc({...calc, r: (calc.p * calc.d / calc.c).toFixed(2)})}>ok</button>
               </div>
-              {calc.r > 0 && <p style={{ textAlign: "center", fontWeight: "bold" }}>Dosis: {calc.r} ml</p>}
+              {calc.r > 0 && <p style={{ textAlign: "center", fontWeight: "bold", margin: "5px 0 0", color: "#1a331a" }}>Dosis: {calc.r} ml</p>}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-              <input placeholder="Kg" value={cForm.weight} style={inp} onChange={e => setCForm({...cForm, weight: e.target.value})} />
-              <input placeholder="T°" value={cForm.temp} style={inp} onChange={e => setCForm({...cForm, temp: e.target.value})} />
-              <input placeholder="FC" value={cForm.fc} style={inp} onChange={e => setCForm({...cForm, fc: e.target.value})} />
-              <input placeholder="FR" value={cForm.fr} style={inp} onChange={e => setCForm({...cForm, fr: e.target.value})} />
+
+            {/* SECCIÓN EXAMEN FÍSICO */}
+            <div style={{ border: "1px solid #d8e8d0", borderRadius: 15, padding: 15, marginBottom: 15 }}>
+              <span style={labelS}>🩺 EXAMEN FÍSICO Y CONSTANTES</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                <div><small style={{fontSize: "9px"}}>Peso (Kg)</small><input value={cForm.weight} style={inp} onChange={e => setCForm({...cForm, weight: e.target.value})} /></div>
+                <div><small style={{fontSize: "9px"}}>T° (°C)</small><input value={cForm.temp} style={inp} onChange={e => setCForm({...cForm, temp: e.target.value})} /></div>
+                <div><small style={{fontSize: "9px"}}>FC (lpm)</small><input value={cForm.fc} style={inp} onChange={e => setCForm({...cForm, fc: e.target.value})} /></div>
+                <div><small style={{fontSize: "9px"}}>FR (rpm)</small><input value={cForm.fr} style={inp} onChange={e => setCForm({...cForm, fr: e.target.value})} /></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 5 }}>
+                <input placeholder="Mucosas (Ej: Rosadas)" value={cForm.mucosas} style={inp} onChange={e => setCForm({...cForm, mucosas: e.target.value})} />
+                <input placeholder="TLLC (seg)" value={cForm.tllc} style={inp} onChange={e => setCForm({...cForm, tllc: e.target.value})} />
+                <input placeholder="Linfonodos" value={cForm.linfonodos} style={inp} onChange={e => setCForm({...cForm, linfonodos: e.target.value})} />
+                <input placeholder="Hidratación (%)" value={cForm.hidratacion} style={inp} onChange={e => setCForm({...cForm, hidratacion: e.target.value})} />
+                <input placeholder="Cavidad Oral" style={{...inp, gridColumn: "span 2"}} value={cForm.oral} onChange={e => setCForm({...cForm, oral: e.target.value})} />
+              </div>
             </div>
-            <textarea style={{ ...inp, height: 60 }} placeholder="Diagnóstico..." value={cForm.diagnostico} onChange={e => setCForm({...cForm, diagnostico: e.target.value})} />
-            <textarea style={{ ...inp, height: 80, border: "2px solid #3a7a3a" }} placeholder="Tratamiento..." value={cForm.tratamiento} onChange={e => setCForm({...cForm, tratamiento: e.target.value})} />
-            <div style={{ background: "#fffbe6", padding: 15, borderRadius: 12, border: "1px solid #ffe58f", marginBottom: 15 }}>
+            
+            <textarea style={{ ...inp, height: 60 }} placeholder="Diagnóstico / Hallazgos..." value={cForm.diagnostico} onChange={e => setCForm({...cForm, diagnostico: e.target.value})} />
+            <textarea style={{ ...inp, height: 80, border: "2px solid #3a7a3a" }} placeholder="Tratamiento e indicaciones..." value={cForm.tratamiento} onChange={e => setCForm({...cForm, tratamiento: e.target.value})} />
+            
+            <div style={{ background: "#fffbe6", padding: 12, borderRadius: 12, border: "1px solid #ffe58f", marginBottom: 15 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                <input type="checkbox" checked={cForm.consentimiento} style={{ transform: "scale(1.5)" }} onChange={e => setCForm({...cForm, consentimiento: e.target.checked})} />
-                <span style={{ fontSize: 12 }}><strong>Consentimiento Informado:</strong> El tutor acepta riesgos y procedimientos.</span>
+                <input type="checkbox" checked={cForm.consentimiento} style={{ transform: "scale(1.3)" }} onChange={e => setCForm({...cForm, consentimiento: e.target.checked})} />
+                <span style={{ fontSize: 11 }}><strong>Consentimiento Informado:</strong> El tutor autoriza procedimientos y acepta riesgos.</span>
               </label>
             </div>
+
             <button style={{ ...btnG, width: "100%" }} onClick={() => {
               if (activeHistId) {
                   const newHist = activePat.history.map(h => h.id === activeHistId ? cForm : h);
@@ -255,11 +280,13 @@ export default function VetApp() {
                   setPatients(patients.map(p => p.id === activePat.id ? { ...p, weight: cForm.weight || p.weight, history: [cForm, ...p.history] } : p));
               }
               setModal(null);
-            }}>Finalizar y Guardar</button>
+            }}>Guardar Atención</button>
+            <button onClick={() => setModal(null)} style={{ background: "none", border: "none", width: "100%", marginTop: 10, color: "#666" }}>Cancelar</button>
           </div>
         </div>
       )}
 
+      {/* MODALES VACUNA E HISTORIAL (SIN CAMBIOS) */}
       {modal === "vacuna" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 25, width: "90%", maxWidth: 400 }}>
