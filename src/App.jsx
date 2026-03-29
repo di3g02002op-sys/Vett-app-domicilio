@@ -52,19 +52,18 @@ const exportPDF = (p, type = "historia", consulta = null) => {
 
 export default function VetApp() {
   const [tab, setTab] = useState("inicio");
-  const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem("vet_v22") || "[]"));
-  const [finances, setFinances] = useState(() => JSON.parse(localStorage.getItem("fin_v22") || "[]"));
+  const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem("vet_v23") || "[]"));
+  const [finances, setFinances] = useState(() => JSON.parse(localStorage.getItem("fin_v23") || "[]"));
   const [modal, setModal] = useState(null);
   const [activePat, setActivePat] = useState(null);
-  const [activeHistId, setActiveHistId] = useState(null); // Para saber si editamos una consulta
+  const [activeHistId, setActiveHistId] = useState(null); 
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    localStorage.setItem("vet_v22", JSON.stringify(patients));
-    localStorage.setItem("fin_v22", JSON.stringify(finances));
+    localStorage.setItem("vet_v23", JSON.stringify(patients));
+    localStorage.setItem("fin_v23", JSON.stringify(finances));
   }, [patients, finances]);
 
-  // Alertas combinadas: Vacunas y Desparasitaciones (Próximos 30 días)
   const alertas = useMemo(() => {
     const hoy = new Date();
     const limite = new Date(); limite.setDate(hoy.getDate() + 30);
@@ -91,6 +90,15 @@ export default function VetApp() {
   const inp = { width: "100%", padding: "12px", border: "1.5px solid #d8e8d0", borderRadius: 12, marginBottom: 12, boxSizing: "border-box" };
   const btnG = { background: "#3a7a3a", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontWeight: 700, cursor: "pointer" };
 
+  // BUSCADOR AVANZADO: Filtra por nombre de mascota O nombre de tutor
+  const filteredPatients = useMemo(() => {
+    const s = search.toLowerCase();
+    return patients.filter(p => 
+      p.name.toLowerCase().includes(s) || 
+      p.ownerName.toLowerCase().includes(s)
+    );
+  }, [patients, search]);
+
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f4f7f4", minHeight: "100vh" }}>
       <header style={{ background: "#1a331a", color: "#fff", padding: "15px 25px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100 }}>
@@ -106,7 +114,6 @@ export default function VetApp() {
       </header>
 
       <main style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
-        
         {tab === "inicio" && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15, marginBottom: 25 }}>
@@ -118,7 +125,7 @@ export default function VetApp() {
               </div>
             </div>
             <div style={{ background: "#fff", padding: 25, borderRadius: 25 }}>
-              <h3>📢 Recordatorios</h3>
+              <h3>📢 Recordatorios (Vacunas y Parásitos)</h3>
               {alertas.length === 0 ? <p>No hay pendientes.</p> : alertas.map((a, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #f0f0f0" }}>
                   <div><strong>{a.pName}</strong> - {a.nombre}<br/><small>Refuerzo: {a.refuerzo}</small></div>
@@ -132,18 +139,18 @@ export default function VetApp() {
         {tab === "pacientes" && (
           <>
             <div style={{ display: "flex", gap: 12, marginBottom: 25 }}>
-              <input placeholder="🔍 Buscar mascota o tutor..." style={{ ...inp, flex: 1, marginBottom: 0 }} onChange={e => setSearch(e.target.value)} />
+              <input placeholder="🔍 Buscar por mascota o tutor..." style={{ ...inp, flex: 1, marginBottom: 0 }} value={search} onChange={e => setSearch(e.target.value)} />
               <button onClick={() => { setPForm({ name: "", species: "Perro", breed: "", age: "", weight: "", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" }); setActivePat(null); setModal("paciente"); }} style={btnG}>+ Nueva Ficha</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
-              {patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.ownerName.toLowerCase().includes(search.toLowerCase())).map(p => (
+              {filteredPatients.map(p => (
                 <div key={p.id} style={{ background: "#fff", padding: 25, borderRadius: 25, border: p.alergias ? "2px solid #ff4d4d" : "none" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 35 }}>{SPECIES_ICO[p.species] || "🐾"}</span>
                     <button onClick={() => { setActivePat(p); setPForm(p); setModal("paciente"); }} style={{ background: "none", border: "none", color: "#3a7a3a", fontWeight: "bold", cursor: "pointer" }}>✏️ Editar</button>
                   </div>
                   <h3 style={{ margin: "5px 0" }}>{p.name}</h3>
-                  <p style={{ fontSize: 13, color: "#666" }}>{p.ownerName} | {p.weight} kg</p>
+                  <p style={{ fontSize: 13, color: "#666" }}>Tutor: {p.ownerName} | {p.weight} kg</p>
                   {p.alergias && <div style={{ color: "#d32f2f", fontWeight: "bold", fontSize: 10 }}>⚠️ ALÉRGICO: {p.alergias.toUpperCase()}</div>}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                     <button onClick={() => { setActivePat(p); setActiveHistId(null); setCForm({ id: Date.now(), date: new Date().toISOString().split('T')[0], weight: p.weight, temp: "", fc: "", fr: "", diagnostico: "", tratamiento: "", consentimiento: false }); setModal("consulta"); }} style={btnG}>🩺 Consulta</button>
@@ -172,21 +179,32 @@ export default function VetApp() {
         )}
       </main>
 
-      {/* MODAL: ALTA/EDICIÓN PACIENTE */}
+      {/* MODAL: ALTA/EDICIÓN PACIENTE + BORRADO */}
       {modal === "paciente" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 30, width: "90%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
-            <h3>{activePat ? "Editar Ficha" : "Nueva Ficha"}</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+              <h3 style={{ margin: 0 }}>{activePat ? "Editar Ficha" : "Nueva Ficha"}</h3>
+              {activePat && (
+                <button onClick={() => {
+                  if(confirm(`¿Seguro que quieres borrar a ${activePat.name}? Se perderá todo su historial.`)) {
+                    setPatients(patients.filter(p => p.id !== activePat.id));
+                    setModal(null);
+                  }
+                }} style={{ background: "#ff4d4d", color: "#fff", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}>🗑️ Eliminar</button>
+              )}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <input placeholder="Nombre" value={pForm.name} style={inp} onChange={e => setPForm({...pForm, name: e.target.value})} />
+              <input placeholder="Nombre Mascota" value={pForm.name} style={inp} onChange={e => setPForm({...pForm, name: e.target.value})} />
               <select value={pForm.species} style={inp} onChange={e => setPForm({...pForm, species: e.target.value})}><option>Perro</option><option>Gato</option><option>Otro</option></select>
               <input placeholder="Peso (Kg)" value={pForm.weight} type="number" style={inp} onChange={e => setPForm({...pForm, weight: e.target.value})} />
               <input placeholder="Raza" value={pForm.breed} style={inp} onChange={e => setPForm({...pForm, breed: e.target.value})} />
             </div>
             <span style={labelS}>Alergias</span>
             <input style={{ ...inp, border: "1.5px solid #ff4d4d" }} placeholder="Ej: Penicilina..." value={pForm.alergias} onChange={e => setPForm({...pForm, alergias: e.target.value})} />
-            <input placeholder="Tutor" value={pForm.ownerName} style={inp} onChange={e => setPForm({...pForm, ownerName: e.target.value})} />
-            <input placeholder="WhatsApp" value={pForm.ownerPhone} style={inp} onChange={e => setPForm({...pForm, ownerPhone: e.target.value})} />
+            <input placeholder="Nombre Tutor" value={pForm.ownerName} style={inp} onChange={e => setPForm({...pForm, ownerName: e.target.value})} />
+            <input placeholder="WhatsApp Tutor" value={pForm.ownerPhone} style={inp} onChange={e => setPForm({...pForm, ownerPhone: e.target.value})} />
+            <input placeholder="Dirección" value={pForm.ownerAddress} style={inp} onChange={e => setPForm({...pForm, ownerAddress: e.target.value})} />
             <button style={{ ...btnG, width: "100%" }} onClick={() => { 
                 if(activePat) {
                     setPatients(patients.map(p => p.id === activePat.id ? {...p, ...pForm} : p));
@@ -194,18 +212,17 @@ export default function VetApp() {
                     setPatients([{ ...pForm, id: Date.now(), history: [], vacunas: [], parasitos: [] }, ...patients]);
                 }
                 setModal(null); 
-            }}>Guardar</button>
-            <button onClick={() => setModal(null)} style={{ background: "none", border: "none", width: "100%", marginTop: 10 }}>Cerrar</button>
+            }}>Guardar Ficha</button>
+            <button onClick={() => setModal(null)} style={{ background: "none", border: "none", width: "100%", marginTop: 10, cursor: "pointer", color: "#666" }}>Cerrar sin guardar</button>
           </div>
         </div>
       )}
 
-      {/* MODAL: CONSULTA + EDICIÓN */}
+      {/* MODAL: CONSULTA / MODAL VACUNA / MODAL HISTORIAL (SIGUEN IGUAL) */}
       {modal === "consulta" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 10 }}>
           <div style={{ background: "#fff", borderRadius: 30, width: "100%", maxWidth: 700, maxHeight: "95vh", overflowY: "auto", padding: 30 }}>
             <h3>{activeHistId ? "Editar Atención" : "Atención"}: {activePat.name}</h3>
-            
             <div style={{ background: "#f0f7f0", padding: 15, borderRadius: 15, marginBottom: 15 }}>
               <span style={labelS}>🧮 CALCULADORA</span>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 0.5fr", gap: 8 }}>
@@ -216,24 +233,20 @@ export default function VetApp() {
               </div>
               {calc.r > 0 && <p style={{ textAlign: "center", fontWeight: "bold" }}>Dosis: {calc.r} ml</p>}
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
               <input placeholder="Kg" value={cForm.weight} style={inp} onChange={e => setCForm({...cForm, weight: e.target.value})} />
               <input placeholder="T°" value={cForm.temp} style={inp} onChange={e => setCForm({...cForm, temp: e.target.value})} />
               <input placeholder="FC" value={cForm.fc} style={inp} onChange={e => setCForm({...cForm, fc: e.target.value})} />
               <input placeholder="FR" value={cForm.fr} style={inp} onChange={e => setCForm({...cForm, fr: e.target.value})} />
             </div>
-            
             <textarea style={{ ...inp, height: 60 }} placeholder="Diagnóstico..." value={cForm.diagnostico} onChange={e => setCForm({...cForm, diagnostico: e.target.value})} />
             <textarea style={{ ...inp, height: 80, border: "2px solid #3a7a3a" }} placeholder="Tratamiento..." value={cForm.tratamiento} onChange={e => setCForm({...cForm, tratamiento: e.target.value})} />
-            
             <div style={{ background: "#fffbe6", padding: 15, borderRadius: 12, border: "1px solid #ffe58f", marginBottom: 15 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={cForm.consentimiento} style={{ transform: "scale(1.5)" }} onChange={e => setCForm({...cForm, consentimiento: e.target.checked})} />
                 <span style={{ fontSize: 12 }}><strong>Consentimiento Informado:</strong> El tutor acepta riesgos y procedimientos.</span>
               </label>
             </div>
-
             <button style={{ ...btnG, width: "100%" }} onClick={() => {
               if (activeHistId) {
                   const newHist = activePat.history.map(h => h.id === activeHistId ? cForm : h);
@@ -247,7 +260,6 @@ export default function VetApp() {
         </div>
       )}
 
-      {/* MODAL: VACUNA / PARÁSITOS */}
       {modal === "vacuna" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 25, width: "90%", maxWidth: 400 }}>
@@ -268,7 +280,6 @@ export default function VetApp() {
         </div>
       )}
 
-      {/* MODAL: HISTORIAL CON EDICIÓN */}
       {modal === "historial" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 35, borderRadius: 30, width: "90%", maxWidth: 650, maxHeight: "85vh", overflowY: "auto" }}>
