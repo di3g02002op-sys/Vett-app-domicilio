@@ -84,7 +84,7 @@ export default function VetApp() {
   const [activeHistId, setActiveHistId] = useState(null); 
   const [search, setSearch] = useState("");
 
-  // ESTADOS PARA FORMULARIOS (Modificado con age y sex)
+  // ESTADOS PARA FORMULARIOS
   const [pForm, setPForm] = useState({ name: "", species: "Perro", breed: "", weight: "", age: "", sex: "Macho", reproductivo: "Entero/a", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" });
   const [cForm, setCForm] = useState({ id: null, date: new Date().toISOString().split('T')[0], weight: "", temp: "", fc: "", fr: "", tllc: "", mucosas: "", cc: "3", linfonodos: "", hidratacion: "", oral: "", anamnesis: "", diagnostico: "", tratamiento: "", proximoControl: "", consentimiento: false });
   const [vForm, setVForm] = useState({ nombre: "", fecha: new Date().toISOString().split('T')[0], refuerzo: "", tipo: "vacuna" });
@@ -94,6 +94,13 @@ export default function VetApp() {
     localStorage.setItem("vet_v25", JSON.stringify(patients));
     localStorage.setItem("fin_v25", JSON.stringify(finances));
   }, [patients, finances]);
+
+  // ─── FUNCIONALIDAD ELIMINAR FICHA ──────────────────────────────────
+  const eliminarPaciente = (id, nombre) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar la ficha de ${nombre}? Esta acción no se puede deshacer.`)) {
+      setPatients(patients.filter(p => p.id !== id));
+    }
+  };
 
   // ─── LÓGICA DE ALERTAS Y RECORDATORIOS ─────────────────────────────
   const alertas = useMemo(() => {
@@ -182,7 +189,10 @@ export default function VetApp() {
                 <div key={p.id} style={{ background: "#fff", padding: 25, borderRadius: 25, border: p.alergias ? "2px solid #ff4d4d" : "none" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 35 }}>{SPECIES_ICO[p.species] || "🐾"}</span>
-                    <button onClick={() => { setActivePat(p); setPForm(p); setModal("paciente"); }} style={{ background: "none", border: "none", color: "#3a7a3a", fontWeight: "bold", cursor: "pointer" }}>✏️ Editar</button>
+                    <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={() => { setActivePat(p); setPForm(p); setModal("paciente"); }} style={{ background: "none", border: "none", color: "#3a7a3a", fontWeight: "bold", cursor: "pointer" }}>✏️ Editar</button>
+                        <button onClick={() => eliminarPaciente(p.id, p.name)} style={{ background: "none", border: "none", color: "#ff4d4d", fontWeight: "bold", cursor: "pointer" }}>🗑️</button>
+                    </div>
                   </div>
                   <h3 style={{ margin: "5px 0" }}>{p.name}</h3>
                   <p style={{ fontSize: 13, color: "#666" }}>{p.age || '?'} | {p.sex} | {p.weight} kg</p>
@@ -288,7 +298,7 @@ export default function VetApp() {
         </div>
       )}
 
-      {/* MODAL: PACIENTE (Modificado con Edad y Sexo) */}
+      {/* MODAL: PACIENTE */}
       {modal === "paciente" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 30, width: "90%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
@@ -296,11 +306,8 @@ export default function VetApp() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 15 }}>
               <input placeholder="Nombre Mascota" value={pForm.name} style={inp} onChange={e => setPForm({...pForm, name: e.target.value})} />
               <select value={pForm.species} style={inp} onChange={e => setPForm({...pForm, species: e.target.value})}><option>Perro</option><option>Gato</option><option>Ave</option><option>Otro</option></select>
-              
-              {/* NUEVOS CAMPOS: EDAD Y SEXO */}
               <input placeholder="Edad (ej: 2 años)" value={pForm.age} style={inp} onChange={e => setPForm({...pForm, age: e.target.value})} />
               <select value={pForm.sex} style={inp} onChange={e => setPForm({...pForm, sex: e.target.value})}><option>Macho</option><option>Hembra</option></select>
-              
               <input placeholder="Peso (Kg)" value={pForm.weight} type="number" style={inp} onChange={e => setPForm({...pForm, weight: e.target.value})} />
               <select value={pForm.reproductivo} style={inp} onChange={e => setPForm({...pForm, reproductivo: e.target.value})}><option>Entero/a</option><option>Castrado/a</option></select>
             </div>
@@ -361,7 +368,6 @@ export default function VetApp() {
                 <span style={{ fontSize: 12, background: "#f0f5ef", padding: "5px 10px", borderRadius: 10 }}>{activePat.history.length} atenciones</span>
             </div>
 
-            {/* SECCIÓN PREVENTIVA RÁPIDA */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15, marginBottom: 20, background: "#f9f9f9", padding: 15, borderRadius: 15 }}>
                 <div>
                     <span style={labelS}>ÚLTIMAS VACUNAS</span>
