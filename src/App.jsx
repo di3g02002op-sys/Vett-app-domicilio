@@ -42,6 +42,7 @@ const exportPDF = (p, type = "historia", consulta = null) => {
       <div><strong>Tutor:</strong> ${p.ownerName}<br><strong>WhatsApp:</strong> ${p.ownerPhone}<br><strong>Dirección:</strong> ${p.ownerAddress}</div>
       <div>
         <strong>Paciente:</strong> ${p.name}<br><strong>Especie/Raza:</strong> ${p.species} / ${p.breed}<br>
+        <strong>Edad/Sexo:</strong> ${p.age || '--'} / ${p.sex || '--'}<br>
         <strong>Peso:</strong> ${consulta?.weight || p.weight || '--'} kg | <strong>Estado:</strong> ${p.reproductivo || 'Entero/a'}
         ${p.alergias ? `<div class="alerta-alergia">⚠️ ALÉRGICO A: ${p.alergias.toUpperCase()}</div>` : ''}
       </div>
@@ -83,8 +84,8 @@ export default function VetApp() {
   const [activeHistId, setActiveHistId] = useState(null); 
   const [search, setSearch] = useState("");
 
-  // ESTADOS PARA FORMULARIOS
-  const [pForm, setPForm] = useState({ name: "", species: "Perro", breed: "", weight: "", reproductivo: "Entero/a", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" });
+  // ESTADOS PARA FORMULARIOS (Modificado con age y sex)
+  const [pForm, setPForm] = useState({ name: "", species: "Perro", breed: "", weight: "", age: "", sex: "Macho", reproductivo: "Entero/a", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" });
   const [cForm, setCForm] = useState({ id: null, date: new Date().toISOString().split('T')[0], weight: "", temp: "", fc: "", fr: "", tllc: "", mucosas: "", cc: "3", linfonodos: "", hidratacion: "", oral: "", anamnesis: "", diagnostico: "", tratamiento: "", proximoControl: "", consentimiento: false });
   const [vForm, setVForm] = useState({ nombre: "", fecha: new Date().toISOString().split('T')[0], refuerzo: "", tipo: "vacuna" });
   const [calc, setCalc] = useState({ p: "", d: "", c: "", r: 0 });
@@ -100,7 +101,6 @@ export default function VetApp() {
     const limite = new Date(); limite.setDate(hoy.getDate() + 30);
     return patients.flatMap(p => {
         const recordatorios = [...(p.vacunas || []), ...(p.parasitos || [])];
-        // También incluimos los próximos controles clínicos de las consultas
         if(p.history && p.history[0]?.proximoControl) {
             recordatorios.push({ nombre: "Control Clínico", refuerzo: p.history[0].proximoControl });
         }
@@ -175,7 +175,7 @@ export default function VetApp() {
           <>
             <div style={{ display: "flex", gap: 12, marginBottom: 25 }}>
               <input placeholder="🔍 Buscar por mascota o tutor..." style={{ ...inp, flex: 1, marginBottom: 0 }} value={search} onChange={e => setSearch(e.target.value)} />
-              <button onClick={() => { setPForm({ name: "", species: "Perro", breed: "", weight: "", reproductivo: "Entero/a", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" }); setActivePat(null); setModal("paciente"); }} style={btnG}>+ Nueva Ficha</button>
+              <button onClick={() => { setPForm({ name: "", species: "Perro", breed: "", weight: "", age: "", sex: "Macho", reproductivo: "Entero/a", alergias: "", ownerName: "", ownerPhone: "", ownerAddress: "" }); setActivePat(null); setModal("paciente"); }} style={btnG}>+ Nueva Ficha</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
               {filteredPatients.map(p => (
@@ -185,7 +185,8 @@ export default function VetApp() {
                     <button onClick={() => { setActivePat(p); setPForm(p); setModal("paciente"); }} style={{ background: "none", border: "none", color: "#3a7a3a", fontWeight: "bold", cursor: "pointer" }}>✏️ Editar</button>
                   </div>
                   <h3 style={{ margin: "5px 0" }}>{p.name}</h3>
-                  <p style={{ fontSize: 13, color: "#666" }}>Tutor: {p.ownerName} | {p.weight} kg</p>
+                  <p style={{ fontSize: 13, color: "#666" }}>{p.age || '?'} | {p.sex} | {p.weight} kg</p>
+                  <p style={{ fontSize: 12, color: "#888" }}>Tutor: {p.ownerName}</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                     <button onClick={() => { setActivePat(p); setActiveHistId(null); setCForm({ id: Date.now(), date: new Date().toISOString().split('T')[0], weight: p.weight, temp: "", fc: "", fr: "", tllc: "", mucosas: "", cc: "3", linfonodos: "", hidratacion: "", oral: "", anamnesis: "", diagnostico: "", tratamiento: "", proximoControl: "", consentimiento: false }); setModal("consulta"); }} style={btnG}>🩺 Consulta</button>
                     <button onClick={() => { setActivePat(p); setVForm({ nombre: "", fecha: new Date().toISOString().split('T')[0], refuerzo: "", tipo: "vacuna" }); setModal("vacuna"); }} style={{ ...btnG, background: "#4a90e2" }}>💉 Vac/Parás</button>
@@ -287,7 +288,7 @@ export default function VetApp() {
         </div>
       )}
 
-      {/* MODAL: PACIENTE */}
+      {/* MODAL: PACIENTE (Modificado con Edad y Sexo) */}
       {modal === "paciente" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 30, width: "90%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
@@ -295,6 +296,11 @@ export default function VetApp() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 15 }}>
               <input placeholder="Nombre Mascota" value={pForm.name} style={inp} onChange={e => setPForm({...pForm, name: e.target.value})} />
               <select value={pForm.species} style={inp} onChange={e => setPForm({...pForm, species: e.target.value})}><option>Perro</option><option>Gato</option><option>Ave</option><option>Otro</option></select>
+              
+              {/* NUEVOS CAMPOS: EDAD Y SEXO */}
+              <input placeholder="Edad (ej: 2 años)" value={pForm.age} style={inp} onChange={e => setPForm({...pForm, age: e.target.value})} />
+              <select value={pForm.sex} style={inp} onChange={e => setPForm({...pForm, sex: e.target.value})}><option>Macho</option><option>Hembra</option></select>
+              
               <input placeholder="Peso (Kg)" value={pForm.weight} type="number" style={inp} onChange={e => setPForm({...pForm, weight: e.target.value})} />
               <select value={pForm.reproductivo} style={inp} onChange={e => setPForm({...pForm, reproductivo: e.target.value})}><option>Entero/a</option><option>Castrado/a</option></select>
             </div>
@@ -313,7 +319,7 @@ export default function VetApp() {
         </div>
       )}
 
-      {/* MODAL: VACUNA / PARÁSITOS (CON REFUERZO) */}
+      {/* MODAL: VACUNA / PARÁSITOS */}
       {modal === "vacuna" && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", padding: 30, borderRadius: 25, width: "90%", maxWidth: 400 }}>
